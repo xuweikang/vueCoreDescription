@@ -45,6 +45,7 @@ export class Observer {
     this.vmCount = 0
     def(value, '__ob__', this)
     if (Array.isArray(value)) {
+      // todo： 对于数组的响应式后面再看
       if (hasProto) {
         protoAugment(value, arrayMethods)
       } else {
@@ -113,6 +114,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   }
   let ob: Observer | void
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+    // 如果已存在 则直接返回
     ob = value.__ob__
   } else if (
     shouldObserve &&
@@ -121,7 +123,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     Object.isExtensible(value) &&
     !value._isVue
   ) {
-    ob = new Observer(value)
+    ob = new Observer(value) // 到这里，正式开启观察器了
   }
   if (asRootData && ob) {
     ob.vmCount++
@@ -139,7 +141,7 @@ export function defineReactive (
   customSetter?: ?Function,
   shallow?: boolean
 ) {
-  const dep = new Dep()
+  const dep = new Dep() // 
 
   const property = Object.getOwnPropertyDescriptor(obj, key)
   if (property && property.configurable === false) {
@@ -147,19 +149,26 @@ export function defineReactive (
   }
 
   // cater for pre-defined getter/setters
+  // 这里是使用属性默认的getter和setter（如果有）
   const getter = property && property.get
   const setter = property && property.set
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
+  // 以上代码牵扯到Vue中的两个issure：#7302 和 #7828
+  // 刚开始是没有上述判断的，walk方法直接 defineReactive(obj, keys[i], obj[keys[i]]) 调用方法，
+  // 但是这样会有问题，在 执行obj[keys[i]]的时候会触发keys[i]的get方法，如果用户自己定义了这个get，会导致取值异常了。
+  // 所以1. 先判断下用户是否设置了getter，如果没有设置才去取val
+  // 
 
-  let childOb = !shallow && observe(val)
+  let childOb = !shallow && observe(val) // 如果子元素也是对象，则递归子元素
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val
-      if (Dep.target) {
+      if (Dep.target) { // todo:标记
+        // 开始依赖收集
         dep.depend()
         if (childOb) {
           childOb.dep.depend()
@@ -174,6 +183,7 @@ export function defineReactive (
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {
+        // 数据如果没有变化直接return !!! 这是判断两个值是否相同的写法 NaN
         return
       }
       /* eslint-enable no-self-compare */
@@ -187,8 +197,8 @@ export function defineReactive (
       } else {
         val = newVal
       }
-      childOb = !shallow && observe(newVal)
-      dep.notify()
+      childOb = !shallow && observe(newVal) // 如果子元素也是对象，则递归子元素
+      dep.notify() // 开始通知所有的依赖进行更新了
     }
   })
 }

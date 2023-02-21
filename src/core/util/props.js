@@ -25,15 +25,16 @@ export function validateProp (
   vm?: Component
 ): any {
   const prop = propOptions[key]
-  const absent = !hasOwn(propsData, key)
+  const absent = !hasOwn(propsData, key) // 父组件是否正常传入prop？
   let value = propsData[key]
   // boolean casting
   const booleanIndex = getTypeIndex(Boolean, prop.type)
   if (booleanIndex > -1) {
     if (absent && !hasOwn(prop, 'default')) {
+      // 当父组件没有传入，并且子组件也没有声明default时候， 赋值为false
       value = false
     } else if (value === '' || value === hyphenate(key)) {
-      // only cast empty string / same name to boolean if
+      // only cast empty string / same name to boolean if boolean has higher priority
       // boolean has higher priority
       const stringIndex = getTypeIndex(String, prop.type)
       if (stringIndex < 0 || booleanIndex < stringIndex) {

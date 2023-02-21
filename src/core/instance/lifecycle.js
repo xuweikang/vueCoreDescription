@@ -187,7 +187,7 @@ export function mountComponent (
     }
   } else {
     updateComponent = () => {
-      vm._update(vm._render(), hydrating)
+      vm._update(vm._render(), hydrating) // vm._render（）拿到VNode，vm_update虚拟DOM对比，并更新到真是DOM。
     }
   }
 
@@ -335,16 +335,17 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
 
 export function callHook (vm: Component, hook: string) {
   // #7573 disable dep collection when invoking lifecycle hooks
-  pushTarget()
+  pushTarget() // 插入空依赖的目的是，禁止生命周期钩子函数在执行时的依赖收集
   const handlers = vm.$options[hook]
   const info = `${hook} hook`
   if (handlers) {
     for (let i = 0, j = handlers.length; i < j; i++) {
-      invokeWithErrorHandling(handlers[i], vm, null, vm, info)
+      invokeWithErrorHandling(handlers[i], vm, null, vm, info) // 执行钩子函数并抛出可能的错误
     }
   }
   if (vm._hasHookEvent) {
+    // 如果父组件有设置子组件的生命周期监听函数，则用 $emit 抛出对应生命周期事件
     vm.$emit('hook:' + hook)
   }
-  popTarget()
+  popTarget() //删除之前插入的 undefined 元素，并恢复 Dep 依赖对象中的依赖收集效果
 }

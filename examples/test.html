@@ -7,16 +7,28 @@
 <body>
   <div id="app">
     {{ msg }}
+    阿萨德男的
+    <div>{{ msg }}</div>
+    <h1>{{ msg }}</h1>
   </div>
   <script src="../dist/vue.js"></script>
   <script>
     debugger
-    new Vue({
+    let vue = new Vue({
       el: '#app',
       data: {
-        msg: 'hello vue'
-      }
+        msg: 'hello vue',
+      },
+      created() {
+        console.log('created')
+      },
+      mounted() {
+        console.log('mounted')
+        this.msg = 'hhhhh'
+      },
     })
+    
+    console.log(vue)
   </script>
 </body>
 </html>

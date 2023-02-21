@@ -43,17 +43,18 @@ export default class Watcher {
   value: any;
 
   constructor (
-    vm: Component,
-    expOrFn: string | Function,
-    cb: Function,
-    options?: ?Object,
-    isRenderWatcher?: boolean
+    vm: Component, 
+    expOrFn: string | Function,  // 字符表达式或者函数
+    cb: Function,  // 回调函数，收到新通知时执行
+    options?: ?Object,  // 其他选项
+    isRenderWatcher?: boolean  // 是否为渲染Watcher，计算属性和$watch也会用到Watcher类，但是这个值是false
   ) {
     this.vm = vm
     if (isRenderWatcher) {
       vm._watcher = this
     }
     vm._watchers.push(this)
+
     // options
     if (options) {
       this.deep = !!options.deep
@@ -114,7 +115,7 @@ export default class Watcher {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
       if (this.deep) {
-        traverse(value)
+        traverse(value) // 对属性递归求值和收集依赖
       }
       popTarget()
       this.cleanupDeps()

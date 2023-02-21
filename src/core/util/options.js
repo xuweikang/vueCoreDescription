@@ -27,11 +27,12 @@ import {
  * value into the final value.
  */
 const strats = config.optionMergeStrategies
-
 /**
  * Options with restrictions
  */
 if (process.env.NODE_ENV !== 'production') {
+  // 简单的合并规则
+  // 如果child存在则使用child的，反之用parent
   strats.el = strats.propsData = function (parent, child, vm, key) {
     if (!vm) {
       warn(
@@ -45,6 +46,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 /**
  * Helper that recursively merges two data objects together.
+ * from 里面 的属性 合并到 to，如果发生冲突，以to 里的优先为主
  */
 function mergeData (to: Object, from: ?Object): Object {
   if (!from) return to
@@ -61,20 +63,22 @@ function mergeData (to: Object, from: ?Object): Object {
     toVal = to[key]
     fromVal = from[key]
     if (!hasOwn(to, key)) {
-      set(to, key, fromVal)
+      set(to, key, fromVal) // 设置属性，并且添加响应式关系
     } else if (
       toVal !== fromVal &&
       isPlainObject(toVal) &&
       isPlainObject(fromVal)
     ) {
-      mergeData(toVal, fromVal)
+      mergeData(toVal, fromVal)  // 递归深度合并
     }
   }
   return to
 }
 
 /**
- * Data
+ * 合并data或者方法的规则
+ * 如果childVal为空 则直接返回parentVal
+ * 否则 以childVal为主进行合并
  */
 export function mergeDataOrFn (
   parentVal: any,
@@ -142,6 +146,9 @@ strats.data = function (
 
 /**
  * Hooks and props are merged as arrays.
+ * 生命周期的合并策略是：
+ * 将parent和child的合并成数组
+ * 即，保留两者，但是有顺序限制
  */
 function mergeHook (
   parentVal: ?Array<Function>,
@@ -159,6 +166,7 @@ function mergeHook (
     : res
 }
 
+// 去重
 function dedupeHooks (hooks) {
   const res = []
   for (let i = 0; i < hooks.length; i++) {
@@ -384,6 +392,7 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
 /**
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
+ * 按照特定的合并规则进行合并
  */
 export function mergeOptions (
   parent: Object,
@@ -391,21 +400,19 @@ export function mergeOptions (
   vm?: Component
 ): Object {
   if (process.env.NODE_ENV !== 'production') {
-    checkComponents(child)
+    checkComponents(child) // 检查组件命名规范
   }
 
   if (typeof child === 'function') {
     child = child.options
   }
 
-  normalizeProps(child, vm)
-  normalizeInject(child, vm)
-  normalizeDirectives(child)
+  normalizeProps(child, vm) // 统一规范props的写法，统一成对象表示的格式
+  normalizeInject(child, vm) // 统一规范inject的写法，统一成对象表示的格式
+  normalizeDirectives(child) // 统一规范directives的写法，统一成对象表示的格式
 
-  // Apply extends and mixins on the child options,
-  // but only if it is a raw options object that isn't
-  // the result of another mergeOptions call.
-  // Only merged options has the _base property.
+  // todo：child._base不知道啥意思
+  // 将extends 和 mixins 上的选项，合并到parent
   if (!child._base) {
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm)

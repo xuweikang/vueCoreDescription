@@ -64,12 +64,18 @@ export function initState (vm: Component) {
 function initProps (vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
+
+  // propsOptions是组件定义的props定义
+  // propsData是父组件传递过来的prop数据
+
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
   const keys = vm.$options._propKeys = []
   const isRoot = !vm.$parent
   // root instance props should be converted
   if (!isRoot) {
+    // 子组件不必响应式
+    // todo
     toggleObserving(false)
   }
   for (const key in propsOptions) {
@@ -97,7 +103,7 @@ function initProps (vm: Component, propsOptions: Object) {
         }
       })
     } else {
-      defineReactive(props, key, value)
+      defineReactive(props, key, value) // defineReactive、proxy、observe的区别
     }
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
@@ -115,6 +121,7 @@ function initData (vm: Component) {
     ? getData(data, vm)
     : data || {}
   if (!isPlainObject(data)) {
+    // isPlainObject的作用是判断参数是否是object
     data = {}
     process.env.NODE_ENV !== 'production' && warn(
       'data functions should return an object:\n' +
@@ -143,7 +150,10 @@ function initData (vm: Component) {
         `Use prop default value instead.`,
         vm
       )
-    } else if (!isReserved(key)) {
+    } else if (!isReserved(key)) { // isReserved是用来判断首字符是否是 $ 或者 _ 开头的保留字符
+      // 此处的代理和observe的walk代理不同
+      // proxy代理是将自定义data中的所有属性定义到_data里，即 返回this.xxx 是代理到 this._data.xxx的
+      // 而walk中的Object.defineProperty则是针对data的值
       proxy(vm, `_data`, key)
     }
   }
@@ -153,6 +163,7 @@ function initData (vm: Component) {
 
 export function getData (data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
+  // vue在任何有可能会导致依赖收集的地方都会 用 pushTarget() 来阻止vue来进行依赖收集
   pushTarget()
   try {
     return data.call(vm, vm)
