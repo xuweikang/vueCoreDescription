@@ -45,8 +45,10 @@ export class Observer {
     this.vmCount = 0
     def(value, '__ob__', this)
     if (Array.isArray(value)) {
-      // todo： 对于数组的响应式后面再看
       if (hasProto) {
+        // 有的浏览器不支持__proto__
+        // arrayMethods.__proto__ = Array.prototype 并且重写添加了Array方法
+        // value.__proto__ = arrayMethods
         protoAugment(value, arrayMethods)
       } else {
         copyAugment(value, arrayMethods, arrayKeys)
@@ -73,6 +75,7 @@ export class Observer {
    * Observe a list of Array items.
    */
   observeArray (items: Array<any>) {
+    // 
     for (let i = 0, l = items.length; i < l; i++) {
       observe(items[i])
     }
@@ -167,7 +170,7 @@ export function defineReactive (
     configurable: true,
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val
-      if (Dep.target) { // todo:标记
+      if (Dep.target) { 
         // 开始依赖收集
         dep.depend()
         if (childOb) {

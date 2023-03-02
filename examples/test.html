@@ -6,10 +6,7 @@
 </head>
 <body>
   <div id="app">
-    {{ msg }}
-    阿萨德男的
-    <div>{{ msg }}</div>
-    <h1>{{ msg }}</h1>
+    {{ msg[0].a }}
   </div>
   <script src="../dist/vue.js"></script>
   <script>
@@ -17,14 +14,14 @@
     let vue = new Vue({
       el: '#app',
       data: {
-        msg: 'hello vue',
+        msg: [{a:1}],
       },
       created() {
         console.log('created')
       },
       mounted() {
         console.log('mounted')
-        this.msg = 'hhhhh'
+        this.msg[0].a = '2'
       },
     })
     

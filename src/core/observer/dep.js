@@ -58,7 +58,6 @@ const targetStack = []
 export function pushTarget (target: ?Watcher) {
   targetStack.push(target)
   Dep.target = target
-  window.target = target
 }
 
 export function popTarget () {
