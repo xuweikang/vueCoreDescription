@@ -10,5 +10,5 @@
  
 ### 模块目录：
 
-1. [数据响应原理](https://note.youdao.com/)
+1. [数据响应原理](https://xuweikang.github.io/sourcecodeanalysis/vue2Code-dataReact/)
 2.
