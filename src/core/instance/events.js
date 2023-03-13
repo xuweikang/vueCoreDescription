@@ -51,6 +51,8 @@ export function updateComponentListeners (
 
 export function eventsMixin (Vue: Class<Component>) {
   const hookRE = /^hook:/
+
+  // 注册事件到vm._events
   Vue.prototype.$on = function (event: string | Array<string>, fn: Function): Component {
     const vm: Component = this
     if (Array.isArray(event)) {
@@ -74,7 +76,7 @@ export function eventsMixin (Vue: Class<Component>) {
       vm.$off(event, on)
       fn.apply(vm, arguments)
     }
-    on.fn = fn
+    on.fn = fn // 注释2: 和下面 “注释3” 对应（因为使用者在off的时候传入的是on，但是绑定的是fn）
     vm.$on(event, on)
     return vm
   }
@@ -107,7 +109,7 @@ export function eventsMixin (Vue: Class<Component>) {
     let i = cbs.length
     while (i--) {
       cb = cbs[i]
-      if (cb === fn || cb.fn === fn) {
+      if (cb === fn || cb.fn === fn) { // 注释3： 和上面的 “注释2” 对应
         cbs.splice(i, 1)
         break
       }

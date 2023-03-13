@@ -353,6 +353,7 @@ export function stateMixin (Vue: Class<Component>) {
   Vue.prototype.$set = set
   Vue.prototype.$delete = del
 
+  // 观察 Vue 实例上的一个表达式或者一个函数计算结果的变化
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
@@ -366,6 +367,7 @@ export function stateMixin (Vue: Class<Component>) {
     options.user = true
     const watcher = new Watcher(vm, expOrFn, cb, options)
     if (options.immediate) {
+      // 立即执行(手动执行下回调，传入当前value值)
       try {
         cb.call(vm, watcher.value)
       } catch (error) {

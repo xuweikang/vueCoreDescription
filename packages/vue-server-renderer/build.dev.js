@@ -1001,7 +1001,7 @@ Dep.prototype.removeSub = function removeSub (sub) {
 
 Dep.prototype.depend = function depend () {
   if (Dep.target) {
-    Dep.target.addDep(this);
+    Dep.target.addDep(this); // todo:标记
   }
 };
 
@@ -1009,7 +1009,7 @@ Dep.prototype.notify = function notify () {
   // stabilize the subscriber list first
   var subs = this.subs.slice();
   for (var i = 0, l = subs.length; i < l; i++) {
-    subs[i].update();
+    subs[i].update(); // todo:标记
   }
 };
 
@@ -1037,6 +1037,7 @@ function popTarget () {
 var arrayProto = Array.prototype;
 var arrayMethods = Object.create(arrayProto);
 
+// 覆盖的原生方法
 var methodsToPatch = [
   'push',
   'pop',
@@ -1053,6 +1054,7 @@ var methodsToPatch = [
 methodsToPatch.forEach(function (method) {
   // cache original method
   var original = arrayProto[method];
+  // def 是赋值操作，为arrayMethods添加method方法，第三个参数是具体值
   def(arrayMethods, method, function mutator () {
     var args = [], len = arguments.length;
     while ( len-- ) args[ len ] = arguments[ len ];
@@ -1069,6 +1071,7 @@ methodsToPatch.forEach(function (method) {
         inserted = args.slice(2);
         break
     }
+    // inserted如果也是一个数组，则这个数组也需要被observeArray
     if (inserted) { ob.observeArray(inserted); }
     // notify change
     ob.dep.notify();
@@ -1103,6 +1106,9 @@ var Observer = function Observer (value) {
   def(value, '__ob__', this);
   if (Array.isArray(value)) {
     if (hasProto) {
+      // 有的浏览器不支持__proto__
+      // arrayMethods.__proto__ = Array.prototype 并且重写添加了Array方法
+      // value.__proto__ = arrayMethods
       protoAugment(value, arrayMethods);
     } else {
       copyAugment(value, arrayMethods, arrayKeys);
@@ -1129,6 +1135,7 @@ Observer.prototype.walk = function walk (obj) {
  * Observe a list of Array items.
  */
 Observer.prototype.observeArray = function observeArray (items) {
+  // 
   for (var i = 0, l = items.length; i < l; i++) {
     observe(items[i]);
   }
@@ -1169,6 +1176,7 @@ function observe (value, asRootData) {
   }
   var ob;
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+    // 如果已存在 则直接返回
     ob = value.__ob__;
   } else if (
     shouldObserve &&
@@ -1177,7 +1185,7 @@ function observe (value, asRootData) {
     Object.isExtensible(value) &&
     !value._isVue
   ) {
-    ob = new Observer(value);
+    ob = new Observer(value); // 到这里，正式开启观察器了
   }
   if (asRootData && ob) {
     ob.vmCount++;
@@ -1195,7 +1203,7 @@ function defineReactive$$1 (
   customSetter,
   shallow
 ) {
-  var dep = new Dep();
+  var dep = new Dep(); // 
 
   var property = Object.getOwnPropertyDescriptor(obj, key);
   if (property && property.configurable === false) {
@@ -1203,19 +1211,26 @@ function defineReactive$$1 (
   }
 
   // cater for pre-defined getter/setters
+  // 这里是使用属性默认的getter和setter（如果有）
   var getter = property && property.get;
   var setter = property && property.set;
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key];
   }
+  // 以上代码牵扯到Vue中的两个issure：#7302 和 #7828
+  // 刚开始是没有上述判断的，walk方法直接 defineReactive(obj, keys[i], obj[keys[i]]) 调用方法，
+  // 但是这样会有问题，在 执行obj[keys[i]]的时候会触发keys[i]的get方法，如果用户自己定义了这个get，会导致取值异常了。
+  // 所以1. 先判断下用户是否设置了getter，如果没有设置才去取val
+  // 
 
-  var childOb = !shallow && observe(val);
+  var childOb = !shallow && observe(val); // 如果子元素也是对象，则递归子元素
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter () {
       var value = getter ? getter.call(obj) : val;
-      if (Dep.target) {
+      if (Dep.target) { 
+        // 开始依赖收集
         dep.depend();
         if (childOb) {
           childOb.dep.depend();
@@ -1230,6 +1245,7 @@ function defineReactive$$1 (
       var value = getter ? getter.call(obj) : val;
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {
+        // 数据如果没有变化直接return !!! 这是判断两个值是否相同的写法 NaN
         return
       }
       /* eslint-enable no-self-compare */
@@ -1243,8 +1259,8 @@ function defineReactive$$1 (
       } else {
         val = newVal;
       }
-      childOb = !shallow && observe(newVal);
-      dep.notify();
+      childOb = !shallow && observe(newVal); // 如果子元素也是对象，则递归子元素
+      dep.notify(); // 开始通知所有的依赖进行更新了
     }
   });
 }
@@ -1307,11 +1323,12 @@ function dependArray (value) {
  * value into the final value.
  */
 var strats = config.optionMergeStrategies;
-
 /**
  * Options with restrictions
  */
 {
+  // 简单的合并规则
+  // 如果child存在则使用child的，反之用parent
   strats.el = strats.propsData = function (parent, child, vm, key) {
     if (!vm) {
       warn(
@@ -1325,6 +1342,7 @@ var strats = config.optionMergeStrategies;
 
 /**
  * Helper that recursively merges two data objects together.
+ * from 里面 的属性 合并到 to，如果发生冲突，以to 里的优先为主
  */
 function mergeData (to, from) {
   if (!from) { return to }
@@ -1341,20 +1359,22 @@ function mergeData (to, from) {
     toVal = to[key];
     fromVal = from[key];
     if (!hasOwn(to, key)) {
-      set(to, key, fromVal);
+      set(to, key, fromVal); // 设置属性，并且添加响应式关系
     } else if (
       toVal !== fromVal &&
       isPlainObject(toVal) &&
       isPlainObject(fromVal)
     ) {
-      mergeData(toVal, fromVal);
+      mergeData(toVal, fromVal);  // 递归深度合并
     }
   }
   return to
 }
 
 /**
- * Data
+ * 合并data或者方法的规则
+ * 如果childVal为空 则直接返回parentVal
+ * 否则 以childVal为主进行合并
  */
 function mergeDataOrFn (
   parentVal,
@@ -1422,6 +1442,9 @@ strats.data = function (
 
 /**
  * Hooks and props are merged as arrays.
+ * 生命周期的合并策略是：
+ * 将parent和child的合并成数组
+ * 即，保留两者，但是有顺序限制
  */
 function mergeHook (
   parentVal,
@@ -1439,6 +1462,7 @@ function mergeHook (
     : res
 }
 
+// 去重
 function dedupeHooks (hooks) {
   var res = [];
   for (var i = 0; i < hooks.length; i++) {
@@ -1664,6 +1688,7 @@ function assertObjectType (name, value, vm) {
 /**
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
+ * 按照特定的合并规则进行合并
  */
 function mergeOptions (
   parent,
@@ -1671,21 +1696,19 @@ function mergeOptions (
   vm
 ) {
   {
-    checkComponents(child);
+    checkComponents(child); // 检查组件命名规范
   }
 
   if (typeof child === 'function') {
     child = child.options;
   }
 
-  normalizeProps(child, vm);
-  normalizeInject(child, vm);
-  normalizeDirectives(child);
+  normalizeProps(child, vm); // 统一规范props的写法，统一成对象表示的格式
+  normalizeInject(child, vm); // 统一规范inject的写法，统一成对象表示的格式
+  normalizeDirectives(child); // 统一规范directives的写法，统一成对象表示的格式
 
-  // Apply extends and mixins on the child options,
-  // but only if it is a raw options object that isn't
-  // the result of another mergeOptions call.
-  // Only merged options has the _base property.
+  // todo：child._base不知道啥意思
+  // 将extends 和 mixins 上的选项，合并到parent
   if (!child._base) {
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm);
@@ -1758,15 +1781,16 @@ function validateProp (
   vm
 ) {
   var prop = propOptions[key];
-  var absent = !hasOwn(propsData, key);
+  var absent = !hasOwn(propsData, key); // 父组件是否正常传入prop？
   var value = propsData[key];
   // boolean casting
   var booleanIndex = getTypeIndex(Boolean, prop.type);
   if (booleanIndex > -1) {
     if (absent && !hasOwn(prop, 'default')) {
+      // 当父组件没有传入，并且子组件也没有声明default时候， 赋值为false
       value = false;
     } else if (value === '' || value === hyphenate(key)) {
-      // only cast empty string / same name to boolean if
+      // only cast empty string / same name to boolean if boolean has higher priority
       // boolean has higher priority
       var stringIndex = getTypeIndex(String, prop.type);
       if (stringIndex < 0 || booleanIndex < stringIndex) {
@@ -7720,18 +7744,19 @@ function deactivateChildComponent (vm, direct) {
 
 function callHook (vm, hook) {
   // #7573 disable dep collection when invoking lifecycle hooks
-  pushTarget();
+  pushTarget(); // 插入空依赖的目的是，禁止生命周期钩子函数在执行时的依赖收集
   var handlers = vm.$options[hook];
   var info = hook + " hook";
   if (handlers) {
     for (var i = 0, j = handlers.length; i < j; i++) {
-      invokeWithErrorHandling(handlers[i], vm, null, vm, info);
+      invokeWithErrorHandling(handlers[i], vm, null, vm, info); // 执行钩子函数并抛出可能的错误
     }
   }
   if (vm._hasHookEvent) {
+    // 如果父组件有设置子组件的生命周期监听函数，则用 $emit 抛出对应生命周期事件
     vm.$emit('hook:' + hook);
   }
-  popTarget();
+  popTarget(); //删除之前插入的 undefined 元素，并恢复 Dep 依赖对象中的依赖收集效果
 }
 
 /*  */
@@ -7816,6 +7841,11 @@ function resolveInject (inject, vm) {
 
 function resolveConstructorOptions (Ctor) {
   var options = Ctor.options;
+  /**
+   * super属性是在Vue.extend里面添加的
+   * 该属性指向父级构造器
+   * 从组件的构造函数中解析options 并合并
+  */
   if (Ctor.super) {
     var superOptions = resolveConstructorOptions(Ctor.super);
     var cachedSuperOptions = Ctor.superOptions;

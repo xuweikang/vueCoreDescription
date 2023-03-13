@@ -1048,7 +1048,7 @@
 
   Dep.prototype.depend = function depend () {
     if (Dep.target) {
-      Dep.target.addDep(this);
+      Dep.target.addDep(this); // todo:标记
     }
   };
 
@@ -1056,7 +1056,7 @@
     // stabilize the subscriber list first
     var subs = this.subs.slice();
     for (var i = 0, l = subs.length; i < l; i++) {
-      subs[i].update();
+      subs[i].update(); // todo:标记
     }
   };
 
@@ -1120,6 +1120,7 @@
   var arrayProto = Array.prototype;
   var arrayMethods = Object.create(arrayProto);
 
+  // 覆盖的原生方法
   var methodsToPatch = [
     'push',
     'pop',
@@ -1136,6 +1137,7 @@
   methodsToPatch.forEach(function (method) {
     // cache original method
     var original = arrayProto[method];
+    // def 是赋值操作，为arrayMethods添加method方法，第三个参数是具体值
     def(arrayMethods, method, function mutator () {
       var args = [], len = arguments.length;
       while ( len-- ) args[ len ] = arguments[ len ];
@@ -1152,6 +1154,7 @@
           inserted = args.slice(2);
           break
       }
+      // inserted如果也是一个数组，则这个数组也需要被observeArray
       if (inserted) { ob.observeArray(inserted); }
       // notify change
       ob.dep.notify();
@@ -1182,6 +1185,9 @@
     def(value, '__ob__', this);
     if (Array.isArray(value)) {
       if (hasProto) {
+        // 有的浏览器不支持__proto__
+        // arrayMethods.__proto__ = Array.prototype 并且重写添加了Array方法
+        // value.__proto__ = arrayMethods
         protoAugment(value, arrayMethods);
       } else {
         copyAugment(value, arrayMethods, arrayKeys);
@@ -1208,6 +1214,7 @@
    * Observe a list of Array items.
    */
   Observer.prototype.observeArray = function observeArray (items) {
+    // 
     for (var i = 0, l = items.length; i < l; i++) {
       observe(items[i]);
     }
@@ -1248,6 +1255,7 @@
     }
     var ob;
     if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+      // 如果已存在 则直接返回
       ob = value.__ob__;
     } else if (
       shouldObserve &&
@@ -1256,7 +1264,7 @@
       Object.isExtensible(value) &&
       !value._isVue
     ) {
-      ob = new Observer(value);
+      ob = new Observer(value); // 到这里，正式开启观察器了
     }
     if (asRootData && ob) {
       ob.vmCount++;
@@ -1274,7 +1282,7 @@
     customSetter,
     shallow
   ) {
-    var dep = new Dep();
+    var dep = new Dep(); // 
 
     var property = Object.getOwnPropertyDescriptor(obj, key);
     if (property && property.configurable === false) {
@@ -1282,19 +1290,26 @@
     }
 
     // cater for pre-defined getter/setters
+    // 这里是使用属性默认的getter和setter（如果有）
     var getter = property && property.get;
     var setter = property && property.set;
     if ((!getter || setter) && arguments.length === 2) {
       val = obj[key];
     }
+    // 以上代码牵扯到Vue中的两个issure：#7302 和 #7828
+    // 刚开始是没有上述判断的，walk方法直接 defineReactive(obj, keys[i], obj[keys[i]]) 调用方法，
+    // 但是这样会有问题，在 执行obj[keys[i]]的时候会触发keys[i]的get方法，如果用户自己定义了这个get，会导致取值异常了。
+    // 所以1. 先判断下用户是否设置了getter，如果没有设置才去取val
+    // 
 
-    var childOb = !shallow && observe(val);
+    var childOb = !shallow && observe(val); // 如果子元素也是对象，则递归子元素
     Object.defineProperty(obj, key, {
       enumerable: true,
       configurable: true,
       get: function reactiveGetter () {
         var value = getter ? getter.call(obj) : val;
-        if (Dep.target) {
+        if (Dep.target) { 
+          // 开始依赖收集
           dep.depend();
           if (childOb) {
             childOb.dep.depend();
@@ -1309,6 +1324,7 @@
         var value = getter ? getter.call(obj) : val;
         /* eslint-disable no-self-compare */
         if (newVal === value || (newVal !== newVal && value !== value)) {
+          // 数据如果没有变化直接return !!! 这是判断两个值是否相同的写法 NaN
           return
         }
         /* eslint-enable no-self-compare */
@@ -1322,8 +1338,8 @@
         } else {
           val = newVal;
         }
-        childOb = !shallow && observe(newVal);
-        dep.notify();
+        childOb = !shallow && observe(newVal); // 如果子元素也是对象，则递归子元素
+        dep.notify(); // 开始通知所有的依赖进行更新了
       }
     });
   }
@@ -1386,11 +1402,12 @@
    * value into the final value.
    */
   var strats = config.optionMergeStrategies;
-
   /**
    * Options with restrictions
    */
   {
+    // 简单的合并规则
+    // 如果child存在则使用child的，反之用parent
     strats.el = strats.propsData = function (parent, child, vm, key) {
       if (!vm) {
         warn(
@@ -1404,6 +1421,7 @@
 
   /**
    * Helper that recursively merges two data objects together.
+   * from 里面 的属性 合并到 to，如果发生冲突，以to 里的优先为主
    */
   function mergeData (to, from) {
     if (!from) { return to }
@@ -1420,20 +1438,22 @@
       toVal = to[key];
       fromVal = from[key];
       if (!hasOwn(to, key)) {
-        set(to, key, fromVal);
+        set(to, key, fromVal); // 设置属性，并且添加响应式关系
       } else if (
         toVal !== fromVal &&
         isPlainObject(toVal) &&
         isPlainObject(fromVal)
       ) {
-        mergeData(toVal, fromVal);
+        mergeData(toVal, fromVal);  // 递归深度合并
       }
     }
     return to
   }
 
   /**
-   * Data
+   * 合并data或者方法的规则
+   * 如果childVal为空 则直接返回parentVal
+   * 否则 以childVal为主进行合并
    */
   function mergeDataOrFn (
     parentVal,
@@ -1501,6 +1521,9 @@
 
   /**
    * Hooks and props are merged as arrays.
+   * 生命周期的合并策略是：
+   * 将parent和child的合并成数组
+   * 即，保留两者，但是有顺序限制
    */
   function mergeHook (
     parentVal,
@@ -1518,6 +1541,7 @@
       : res
   }
 
+  // 去重
   function dedupeHooks (hooks) {
     var res = [];
     for (var i = 0; i < hooks.length; i++) {
