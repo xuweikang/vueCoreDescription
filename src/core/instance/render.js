@@ -66,9 +66,12 @@ export function renderMixin (Vue: Class<Component>) {
     return nextTick(fn, this)
   }
 
-  // todo: 返回一个patch后的虚拟DOM
+  // 返回一个虚拟DOM函数
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+    // render 方法在 
+    // 1.instance/init.js 里面定义的，如果options里面有render选项就挂载到$options上
+    // 2.在 *WithCompiler.js 里面定义，如果没有render，就通过compileToFunctions方法返回render函数
     const { render, _parentVnode } = vm.$options
 
     if (_parentVnode) {

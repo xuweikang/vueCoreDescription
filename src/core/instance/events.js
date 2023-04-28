@@ -69,7 +69,6 @@ export function eventsMixin (Vue: Class<Component>) {
     }
     return vm
   }
-
   Vue.prototype.$once = function (event: string, fn: Function): Component {
     const vm: Component = this
     function on () {

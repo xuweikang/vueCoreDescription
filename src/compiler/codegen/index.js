@@ -44,6 +44,7 @@ export function generate (
   ast: ASTElement | void,
   options: CompilerOptions
 ): CodegenResult {
+  // CodegenState对象里面有很多辅助函数，可以讲for、if、template、slot转化为对应的表达式表达
   const state = new CodegenState(options)
   const code = ast ? genElement(ast, state) : '_c("div")'
   return {
@@ -158,6 +159,7 @@ function genIfConditions (
   altGen?: Function,
   altEmpty?: string
 ): string {
+  debugger
   if (!conditions.length) {
     return altEmpty || '_e()'
   }
@@ -210,6 +212,9 @@ export function genFor (
   }
 
   el.forProcessed = true // avoid recursion
+  // _l((data), function(item, index) {
+  //   return genElememt(el, state)
+  // })
   return `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
       `return ${(altGen || genElement)(el, state)}` +

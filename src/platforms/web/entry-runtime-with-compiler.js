@@ -4,11 +4,14 @@ import config from 'core/config'
 import { warn, cached } from 'core/util/index'
 import { mark, measure } from 'core/util/perf'
 
+// 运行时的vue，就是我们平时webpack打包后在线上运行，去除模板编译函数的。
 import Vue from './runtime/index'
+// 查找DOM
 import { query } from './util/index'
 import { compileToFunctions } from './compiler/index'
 import { shouldDecodeNewlines, shouldDecodeNewlinesForHref } from './util/compat'
 
+// 函数缓存
 const idToTemplate = cached(id => {
   const el = query(id)
   return el && el.innerHTML
@@ -32,8 +35,10 @@ Vue.prototype.$mount = function (
   const options = this.$options
   // resolve template/el and convert to render function
   if (!options.render) {
+    // 如果不存在render函数，则需要走templace解析
     let template = options.template
     if (template) {
+      // 运行时 Compliler，效率低
       if (typeof template === 'string') {
         if (template.charAt(0) === '#') {
           template = idToTemplate(template)
@@ -54,6 +59,7 @@ Vue.prototype.$mount = function (
         return this
       }
     } else if (el) {
+      // 创建一个空div包裹住 el
       template = getOuterHTML(el)
     }
     if (template) {
@@ -62,6 +68,7 @@ Vue.prototype.$mount = function (
         mark('compile')
       }
 
+      // compileToFunctions函数比较绕，最终返回render函数，和staticRenderFns数组
       const { render, staticRenderFns } = compileToFunctions(template, {
         outputSourceRange: process.env.NODE_ENV !== 'production',
         shouldDecodeNewlines,

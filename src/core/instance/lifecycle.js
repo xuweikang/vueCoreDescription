@@ -56,6 +56,7 @@ export function initLifecycle (vm: Component) {
 }
 
 export function lifecycleMixin (Vue: Class<Component>) {
+  // _update方法最初定义
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el
@@ -139,6 +140,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
   }
 }
 
+// Vue.prototype.$mount方法的实现
 export function mountComponent (
   vm: Component,
   el: ?Element,
@@ -188,7 +190,7 @@ export function mountComponent (
     }
   } else {
     updateComponent = () => {
-      vm._update(vm._render(), hydrating) // vm._render（）拿到VNode，vm_update虚拟DOM对比，并更新到真是DOM。
+      vm._update(vm._render(), hydrating) // vm._render（）拿到VNode，vm_update虚拟DOM对比，并更新到真实DOM。
     }
   }
 

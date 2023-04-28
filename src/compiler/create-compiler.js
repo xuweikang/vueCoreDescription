@@ -58,6 +58,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
 
       finalOptions.warn = warn
 
+      // 调用 baseCompile 方法 生成 ast、render、 staticRenderFns
       const compiled = baseCompile(template.trim(), finalOptions)
       if (process.env.NODE_ENV !== 'production') {
         detectErrors(compiled.ast, warn)
@@ -68,8 +69,8 @@ export function createCompilerCreator (baseCompile: Function): Function {
     }
 
     return {
-      compile,
-      compileToFunctions: createCompileToFunctionFn(compile)
+      compile, // 其实就是合并处理options 并且 执行 baseCompile
+      compileToFunctions: createCompileToFunctionFn(compile) // return new Function(compile) 工厂函数
     }
   }
 }

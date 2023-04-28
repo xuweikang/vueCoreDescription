@@ -12,14 +12,18 @@ export const createCompiler = createCompilerCreator(function baseCompile (
   template: string,
   options: CompilerOptions
 ): CompiledResult {
+  // 1. parse就是将一段DOM字符串，利用正则，转换拆分为AST结构的对象
   const ast = parse(template.trim(), options)
   if (options.optimize !== false) {
+    // 2. 优化AST，添加 static（静态节点） 和 staticRoot（静态根节点） 标记，
+    // 节省后面的diff算法时间
     optimize(ast, options)
   }
+  // 3. 返回render方法和staticRenderFns数组
   const code = generate(ast, options)
   return {
-    ast,
-    render: code.render,
-    staticRenderFns: code.staticRenderFns
+    ast, // 抽象语法树
+    render: code.render, // 返回 with(this) { return _c(code..) }
+    staticRenderFns: code.staticRenderFns // 返回被标记为static的 render 数组
   }
 })
